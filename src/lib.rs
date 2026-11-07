@@ -84,8 +84,8 @@
 //!
 //! Every position, velocity and angular velocity vector in the public API
 //! (trajectory points, contacts, ground points, final rest position) uses
-//! this frame. Positions are of the ball's centre, and the ball touches
-//! the ground when its centre reaches the ground height: a ball on ground
+//! this frame. Positions are of the ball's center, and the ball touches
+//! the ground when its center reaches the ground height: a ball on ground
 //! level with the tee has `y = 0`.
 //!
 //! **Lateral signs: positive = right.** Every lateral quantity is positive to

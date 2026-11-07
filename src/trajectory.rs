@@ -278,7 +278,7 @@ pub struct ShotResult {
 /// `(0, ground.height(0, 0), 0)`. `ground` decides where the flight lands
 /// ([`GroundModel::landing`]: on terrain, where the flight crosses the
 /// surface, so elevated greens and downhill landings change the carry) and
-/// what happens afterwards ([`GroundModel::settle`]). Pass a [`Surface`]
+/// what happens afterward ([`GroundModel::settle`]). Pass a [`Surface`]
 /// for flat ground with the default physics, a
 /// [`GroundPhysics`](crate::ground::GroundPhysics) for terrain (slopes,
 /// heights, per-point surfaces) or custom tunables, or your own
@@ -1201,7 +1201,7 @@ mod tests {
     //  RUN-OUT — the hop train dies out; roll by club
     // ══════════════════════════════════════════════════════════════════
 
-    /// Trackman's normalisation, 25 °C at sea level, which the carry
+    /// Trackman's normalization, 25 °C at sea level, which the carry
     /// calibration also uses.
     const TRACKMAN_AIR: Environment = Environment {
         altitude_m: 0.0,
@@ -1222,7 +1222,7 @@ mod tests {
     fn shot_hop_train_dies_out() {
         // After the first bounce each hop rises at most about 0.6× as high as
         // the one before (asserted: 0.7×), so a shot makes a handful of
-        // impacts and then rolls. No train of hops a few millimetres high
+        // impacts and then rolls. No train of hops a few millimeters high
         // skims on for dozens of impacts: at most two hops below 1 cm, from wedges to drives, on
         // both presets.
         let hop = |v: DVec3| v.y * v.y / (2.0 * units::G);

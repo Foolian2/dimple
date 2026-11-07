@@ -104,7 +104,7 @@ fn curving_seven_iron() -> ShotInput {
     }
 }
 
-/// Rolling terrain: a gentle tilt plus bumps a few metres across, slopes
+/// Rolling terrain: a gentle tilt plus bumps a few meters across, slopes
 /// up to about 2°.
 fn bumps(x: f64, z: f64) -> f64 {
     0.01 * x - 0.015 * z + 0.12 * (x / 6.0).sin() * (z / 4.0).cos()

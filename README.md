@@ -106,7 +106,7 @@ let shot = simulate_shot(&input, &ball, &env, &range);
 
 // Slopes and height: a heightfield with its normal. Here the fairway
 // rises 2° downrange; for height = a·x + b·z the normal is (−a, 1, −b)
-// normalised. The ball lands where its flight first crosses the surface
+// normalized. The ball lands where its flight first crosses the surface
 // and slides and rolls with the slope's pull.
 let a = 2.0_f64.to_radians().tan();
 let uphill = GroundPhysics::new(FnTerrain(move |x: f64, _z: f64| GroundSample {
@@ -127,7 +127,7 @@ let shot = simulate_shot(&input, &ball, &env, &quick);
    `Contact` and `GroundPoint` have `new` constructors.
 
 The terrain is a heightfield: one height, normal and surface per (x, z),
-sampled under the ball's centre. Flights launch from `(0, height(0, 0), 0)`
+sampled under the ball's center. Flights launch from `(0, height(0, 0), 0)`
 and land where they first cross the surface; carry is the horizontal
 distance to that point. Each 1 ms flight or hop step is checked for a
 crossing at 8 sub-steps, so a ridge or wall narrower than a sub-step (about
@@ -202,7 +202,7 @@ from Biber et al.'s (2023) fit to natural-turf bounces. The PGA Tour
 average drive runs 18 yd on `FAIRWAY`, between the USGA/R&A proposed bounce
 model (17 yd at its 39° landing) and the ShotLink median (21 yd). Penner's
 contact-angle law is faded in below 2 m/s of normal impact speed, which
-ends the long train of millimetre hops the law otherwise sustains after
+ends the long train of millimeter hops the law otherwise sustains after
 the first bounce.
 
 Per-club results, sources, and known limitations are in

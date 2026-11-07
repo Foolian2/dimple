@@ -53,7 +53,7 @@ applications.
   cannot fail (e.g. a flight always has its launch point). `#[must_use]` on
   value-returning fns.
 - Never modify the `version` field in `Cargo.toml`; release CI bumps it.
-- Comments and docs describe current behaviour only — no history.
+- Comments and docs describe current behavior only — no history.
 
 ## Docs policy
 

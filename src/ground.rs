@@ -67,7 +67,7 @@ const MIN_SWITCH_SLIP: f64 = 1e-6;
 /// as grazing: rounding of a velocity that lies in the ground plane.
 const GRAZING: f64 = 1e-12;
 
-/// Residual accepted by the crossing solves: metres for ground crossings,
+/// Residual accepted by the crossing solves: meters for ground crossings,
 /// m/s for the slide-to-roll event.
 const ROOT_TOL: f64 = 1e-12;
 
@@ -116,7 +116,7 @@ impl Restitution {
 ///
 /// No law is validated above 3 m/s: the only published speed-dependent fits
 /// (Burritt & Henrikson 2024) cover putts, 0–3 m/s. On slopes the published
-/// checks favour [`Constant`](Self::Constant): Brede's (1991) slope
+/// checks favor [`Constant`](Self::Constant): Brede's (1991) slope
 /// correction of stimpmeter readings is exact under it and Cross's (2024)
 /// speed-independent break angle holds under it alone; at the same stimp
 /// the quadratic law also holds a ball on a gentler grade. See
@@ -182,7 +182,7 @@ impl RollLaw {
     /// - `Quadratic`: I = `v_ref`²·ln(1 + s₀²)
     /// - `Exponential`: I = 2·`v_ref`²·(1 − e^(−s₀)·(1 + s₀))
     ///
-    /// Both parameterised forms tend to v₀² as `v_ref` → ±∞, which s₀ = 0
+    /// Both parameterized forms tend to v₀² as `v_ref` → ±∞, which s₀ = 0
     /// gives exactly. NaN when `v_ref` is zero or NaN.
     fn stimp_integral(&self, v0: f64) -> f64 {
         let v0_sq = v0 * v0;
@@ -401,12 +401,12 @@ impl Surface {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct GroundSample {
     /// Height (m) of the ground surface at (x, z). dimple treats the ball as
-    /// touching when its centre reaches this height (the ball radius is not
+    /// touching when its center reaches this height (the ball radius is not
     /// added), consistent with the flight's landing; on ground level with
     /// the tee this is 0 and a ball on the ground has `pos.y == 0`.
     pub height: f64,
     /// Unit outward surface normal at (x, z), with `normal.y > 0`. For a
-    /// heightfield `y = h(x, z)` this is `(−∂h/∂x, 1, −∂h/∂z)` normalised.
+    /// heightfield `y = h(x, z)` this is `(−∂h/∂x, 1, −∂h/∂z)` normalized.
     /// [`GroundPhysics`] uses it for the impact plane, the normal load and
     /// the downhill pull, so it should match the slope of `height`.
     pub normal: DVec3,
@@ -438,8 +438,8 @@ fn holds_at_rest(n: DVec3, surface: &Surface) -> bool {
 /// stored: an analytic plane, a grid, a mesh lookup or an engine query all
 /// fit behind `sample`.
 ///
-/// [`GroundPhysics`] tracks the ball's centre and samples the terrain at
-/// the centre's (x, z): the ball is on the ground when `pos.y` equals the
+/// [`GroundPhysics`] tracks the ball's center and samples the terrain at
+/// the center's (x, z): the ball is on the ground when `pos.y` equals the
 /// sampled [`height`](GroundSample::height), and the sampled
 /// [`normal`](GroundSample::normal) gives the contact plane, the normal load
 /// and the downhill pull. It samples every step, so surfaces and slopes can
@@ -450,7 +450,7 @@ fn holds_at_rest(n: DVec3, surface: &Surface) -> bool {
 ///
 /// - The ball always follows the heightfield. Over a crest where
 ///   `v²·κ > g·n_y` (κ the curvature along the path) a real ball would
-///   leave the ground; that launch is not modelled.
+///   leave the ground; that launch is not modeled.
 /// - Into a concave transition (the foot of a slope) the velocity component
 ///   along the new normal is removed, as in an inelastic contact.
 ///
@@ -496,7 +496,7 @@ impl Terrain for Surface {
 /// ```
 ///
 /// A plane: fairway rising 3° downrange and falling 2° to the right. For
-/// `height = a·x + b·z` the normal is `(−a, 1, −b)` normalised.
+/// `height = a·x + b·z` the normal is `(−a, 1, −b)` normalized.
 ///
 /// ```
 /// use dimple::aero::BallModel;
@@ -546,7 +546,7 @@ impl<F> fmt::Debug for FnTerrain<F> {
 pub struct BallState {
     /// Absolute shot time (s since launch).
     pub time: f64,
-    /// Position of the ball's centre (m, crate frame).
+    /// Position of the ball's center (m, crate frame).
     pub pos: DVec3,
     /// Velocity (m/s).
     pub vel: DVec3,
@@ -586,7 +586,7 @@ pub enum Termination {
 pub struct Contact {
     /// Absolute shot time (s).
     pub time: f64,
-    /// Ball centre at impact (m).
+    /// Ball center at impact (m).
     pub pos: DVec3,
     /// Unit surface normal at the contact.
     pub normal: DVec3,
@@ -635,7 +635,7 @@ impl Contact {
 pub struct GroundPoint {
     /// Absolute shot time (s).
     pub time: f64,
-    /// Ball centre (m).
+    /// Ball center (m).
     pub pos: DVec3,
     /// Velocity (m/s).
     pub vel: DVec3,
@@ -778,7 +778,7 @@ impl<T: Terrain> GroundPhysics<T> {
     }
 
     /// Advance a ball that is on the ground by one step of
-    /// [`dt`](Self::dt), on the terrain under its centre.
+    /// [`dt`](Self::dt), on the terrain under its center.
     ///
     /// Returns the new state and the phase the ball was in over the step.
     /// With `n` the sampled normal, normal load `g·n_y` and tangential
@@ -829,12 +829,12 @@ impl<T: Terrain> GroundPhysics<T> {
         )
     }
 
-    /// Terrain under a ball centred at `pos`.
+    /// Terrain under a ball centered at `pos`.
     fn sample(&self, pos: DVec3) -> GroundSample {
         self.terrain.sample(pos.x, pos.z)
     }
 
-    /// Height of a ball centred at `pos` above the terrain under it.
+    /// Height of a ball centered at `pos` above the terrain under it.
     fn clearance(&self, pos: DVec3) -> f64 {
         pos.y - self.sample(pos).height
     }
@@ -1076,7 +1076,7 @@ const DEFAULT_ROLL_THRESHOLD: f64 = 0.01;
 /// [`simulate_shot`](crate::trajectory::simulate_shot).
 pub trait GroundModel {
     /// Height (m) of the ground surface at (`x`, `z`); the ball touches
-    /// when its centre reaches it (see [`GroundSample::height`]). Used by
+    /// when its center reaches it (see [`GroundSample::height`]). Used by
     /// the default [`landing`](Self::landing) and to place the ball on the
     /// tee at (0, `height(0, 0)`, 0).
     #[must_use]
@@ -1418,7 +1418,7 @@ fn tangential_gravity(n: DVec3) -> DVec3 {
 /// Put a ball that has just stepped across the ground back onto it.
 ///
 /// `at` is the terrain under the ball's new (x, z) and `prev_normal` the
-/// normal the step was taken on. The centre goes to the terrain height and
+/// normal the step was taken on. The center goes to the terrain height and
 /// the velocity into the tangent plane at `at`; a ball that ended the step
 /// `rolling` (a roll, or a slide that reached zero slip) also gets its
 /// tangential spin re-locked to that velocity, keeping its spin about the

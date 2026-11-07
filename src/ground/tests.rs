@@ -477,7 +477,7 @@ fn compliance_tilt_capped_at_incidence_angle() {
 }
 
 #[test]
-fn tilt_fades_in_below_two_metres_per_second() {
+fn tilt_fades_in_below_two_meters_per_second() {
     // Penner's contact angle applies in full from 2 m/s of normal impact
     // speed up and fades in linearly below it: the tilt stands for the
     // crater a landing presses into the turf, which a soft contact barely
@@ -516,7 +516,7 @@ fn low_skimming_hops_lose_height() {
     // m/s, rising 5–115 mm) gets little tilt from its soft contacts, so
     // each rebound leaves lower than the ball arrived and the hops die out
     // within a few impacts. Penner's tilt in full would feed forward speed
-    // back into them and hold them at a few millimetres for dozens of
+    // back into them and hold them at a few millimeters for dozens of
     // impacts.
     for surface in [Surface::FAIRWAY, Surface::GREEN] {
         for v_t in [2.0, 3.0, 4.0] {
@@ -1564,7 +1564,7 @@ fn ground_physics_step() {
 }
 
 #[test]
-fn hollow_ball_follows_generalised_formulas() {
+fn hollow_ball_follows_generalized_formulas() {
     // A thin-shelled ball, k = 2/3, follows the general-k forms of the
     // grip kick, the slide-to-roll time and the stimpmeter distance.
     let k = 2.0 / 3.0;

@@ -283,7 +283,7 @@ recalibrated when such data exist.
 
 Everything after landing is a rigid sphere with point contact, carrying the
 full spin vector ω through every contact. The tracked point is the ball's
-centre, and the ball touches the ground when its centre reaches the ground
+center, and the ball touches the ground when its center reaches the ground
 height (the radius is not added), as in the flight's landing; on ground
 level with the tee a ball touching the ground has `y = 0`. The ground is a
 heightfield with slopes (see [Terrain and slopes](#terrain-and-slopes)).
@@ -361,7 +361,7 @@ lofted landing (launch above about 12°) strikes faster than 2 m/s and gets
 Penner's angle in full (see
 [Hops and the bounce-to-roll transition](#hops-and-the-bounce-to-roll-transition)).
 
-For a ball with no spin about the vertical travelling in a vertical plane,
+For a ball with no spin about the vertical traveling in a vertical plane,
 this is exactly Penner's planar solution: the normal component
 `v_n' = v_n cos β + v_t sin β` (eq. 6), Daish's rigid-surface rebound in
 the effective frame (eqs. 2–4: grip `(5/7)·v_t' − (2/7)·R·ω_back`, or slip
@@ -602,7 +602,7 @@ sampled under the ball every step. With `n` the normal, the normal load is
   friction, `a = −(5/7)·ρ_g·g` with ρ_g = 0.131 (eq. 9), which reads a
   stimp of about 6.0 ft (ρ = 7·v₀²/(10·g·d)).
 
-  On slopes the published checks favour `Constant`: Brede's slope
+  On slopes the published checks favor `Constant`: Brede's slope
   correction of stimpmeter readings is exact under it, and Cross's
   speed-independent break angle holds under it alone. Under the quadratic
   law both are approximate, and at the same stimp it lowers the grade at
@@ -617,7 +617,7 @@ sampled under the ball every step. With `n` the normal, the normal load is
   coefficient frame by frame with Penner's roll model, and fit an
   exponential μ_roll(v) per surface. On average μ varies by about 40% over
   a putt. On three surfaces the ball resists more at speed; on one mat it
-  resists less. dimple does not reproduce their exact parameterisation or
+  resists less. dimple does not reproduce their exact parameterization or
   coefficients. Their fitted curves cover 0–3 m/s; values read from their
   Figure 1 (approximate, read from the figure, not tabulated values), with
   the `v_ref` that makes μ₀·exp(v/v_ref) pass through both readings:
@@ -660,9 +660,9 @@ sampled under the ball every step. With `n` the normal, the normal load is
 
 `Terrain::sample(x, z)` describes the ground as a heightfield: the height,
 the unit normal (`n_y > 0`; for `y = h(x, z)` it is `(−∂h/∂x, 1, −∂h/∂z)`
-normalised) and the surface at each horizontal position. `GroundPhysics`
-samples it at the ball centre's (x, z); the ball is on the ground when its
-centre is at that height.
+normalized) and the surface at each horizontal position. `GroundPhysics`
+samples it at the ball center's (x, z); the ball is on the ground when its
+center is at that height.
 
 - **Landing.** `simulate_shot` launches from `(0, height(0, 0), 0)`. Each
   1 ms flight step is checked for a crossing of the clearance
@@ -681,7 +681,7 @@ centre is at that height.
   tangential spin re-locked to that velocity. On a plane this is exact. On
   curved ground the ball always follows the surface: over a crest where
   `v²·κ > g·n_y` (κ the curvature along the path) a real ball would leave
-  the ground, which is not modelled, and entering a concave transition the
+  the ground, which is not modeled, and entering a concave transition the
   velocity component along the new normal is removed, as in an inelastic
   contact.
 
@@ -723,7 +723,7 @@ mirror image:
 
 `GREEN` holds a ball at rest up to 3.1° (`tan θ ≤ 0.055`, 3.15°). Close to
 that the net deceleration of a slow roll, `(5/7)·g·cos θ·(μ_eff − tan θ)`,
-is tiny and the last metres take a long time: on a 3° downhill green a
+is tiny and the last meters take a long time: on a 3° downhill green a
 drive stops 46 s after landing and a 7-iron 41 s; at 3.1° they take 82 s
 and 77 s, and the wedge 63 s. The default 120 s `max_time` covers these.
 Beyond the hold angle a ball on `GREEN` never stops, and on a long enough
@@ -985,7 +985,7 @@ Quadratic:    I = v_ref² · ln(1 + s₀²)
 Exponential:  I = 2·v_ref² · (1 − e^(−s₀)·(1 + s₀))
 ```
 
-Both parameterised forms tend to `v₀²` as `v_ref` → ±∞. `Exponential` works
+Both parameterized forms tend to `v₀²` as `v_ref` → ±∞. `Exponential` works
 for a negative `v_ref` unchanged.
 
 `Surface::with_stimp(feet)` sets `mu_roll` by this closed form, keeping
@@ -1126,13 +1126,13 @@ the ground at the solved crossing.
   firmness are not inputs. In Biber et al.'s units Penner's green
   (`compliance` 1.0) has a higher k_P than either of their fits (the mat
   0.39, the tee 0.75).
-- **The tilt fade is a modelling choice.** Fading θc in below 2 m/s of
+- **The tilt fade is a modeling choice.** Fading θc in below 2 m/s of
   normal speed ends the near-grazing hop train that the linear law
   sustains; no measurement of soft, grazing turf contacts sets its onset or
   shape. Runs change little for onsets of 1.5–3 m/s. A bump-and-run
   launched under about 12° lands inside the fade and skims 10–16 impacts
   before it rolls.
-- **Tangential compliance is not modelled.** Measured bounces leave the ground slipping, with more topspin than rolling,
+- **Tangential compliance is not modeled.** Measured bounces leave the ground slipping, with more topspin than rolling,
   and the authors suggest that the tangential and spin error of rigid-contact
   models needs a tangential compliance of the ground (Biber et al. 2023).
   dimple's tilted rigid contact plane gives the sign for balls that grip, with
@@ -1178,7 +1178,7 @@ the ground at the solved crossing.
   knows of no published bounce-and-spin measurements on steeper slopes.
   Penner's impact model was fitted on level turf, and he attributes its
   slightly long drive runs to its assumption of level ground.
-- **The slope hop rule is a modelling choice.** It ends hop trains that
+- **The slope hop rule is a modeling choice.** It ends hop trains that
   Penner's impact model would sustain down a slope (see
   [Hops and the bounce-to-roll transition](#hops-and-the-bounce-to-roll-transition)).
   Its margin, one 5 mm hop's energy per impact, carries over Penner's
@@ -1186,7 +1186,7 @@ the ground at the solved crossing.
 - **Slopes beyond the hold angle never come to rest.** Steeper than
   `atan(mu_roll)` (3.15° on `GREEN`) the ball rolls on until the ground
   changes or `max_time` ends it with `MaxTime`. Just inside the hold angle
-  the last metres of a slow roll take over a minute (82 s for a drive on a
+  the last meters of a slow roll take over a minute (82 s for a drive on a
   3.1° `GREEN`; see [Terrain and slopes](#terrain-and-slopes)); a
   `max_time` set below the 120 s default can cut such rolls short.
 
