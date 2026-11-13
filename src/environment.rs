@@ -125,13 +125,29 @@ mod tests {
 pub struct Atmosphere {
     /// Air density in kg/m³. Use `from_density` to validate measured inputs.
     pub air_density: f64,
+    /// Dynamic viscosity in Pa·s, used by Reynolds-dependent aerodynamics.
+    pub dynamic_viscosity: f64,
 }
 
 impl Atmosphere {
+    /// Legacy constant viscosity, including zero-density ballistic ground hops.
+    #[must_use]
+    pub const fn legacy(air_density: f64) -> Self {
+        Self { air_density, dynamic_viscosity: 1.81e-5 }
+    }
+
+    /// Supplied density and dry-air viscosity at ambient temperature.
+    #[must_use]
+    pub fn from_density_and_temperature(air_density: f64, temperature_c: f64) -> Option<Self> {
+        let mut atmosphere = Self::from_density(air_density)?;
+        atmosphere.dynamic_viscosity = dynamic_viscosity(temperature_c)?;
+        Some(atmosphere)
+    }
+
     /// Resolve an externally supplied density; no altitude clamp is applied.
     #[must_use]
     pub fn from_density(air_density: f64) -> Option<Self> {
-        (air_density.is_finite() && air_density > 0.0).then_some(Self { air_density })
+        (air_density.is_finite() && air_density > 0.0).then_some(Self::legacy(air_density))
     }
 }
 
@@ -145,6 +161,32 @@ mod atmosphere_tests {
         }
         for rho in [0.0, -1.0, f64::NAN, f64::INFINITY] {
             assert!(Atmosphere::from_density(rho).is_none());
+        }
+    }
+}
+
+/// Sutherland's law for air: μ = b T^(3/2)/(T + S), T in kelvin.
+/// b = 1.458e-6 kg/(m·s·K^0.5), S = 110.4 K.
+/// Source: Cambridge Engineering, Properties of Fluids, "Formulas for Viscosity":
+/// https://www-mdp.eng.cam.ac.uk/web/library/enginfo/aerothermal_dvd_only/aero/fprops/propsoffluids/node5.html
+#[must_use]
+pub fn dynamic_viscosity(temperature_c: f64) -> Option<f64> {
+    let t = temperature_c + 273.15;
+    if !t.is_finite() || t <= 0.0 { return None; }
+    let mu = 1.458e-6 * t.powf(1.5) / (t + 110.4);
+    (mu.is_finite() && mu > 0.0).then_some(mu)
+}
+
+#[cfg(test)]
+mod viscosity_tests {
+    use super::*;
+    #[test]
+    fn reference_values_and_invalid_temperature() {
+        assert!((dynamic_viscosity(15.0).unwrap() - 1.7894e-5).abs() < 1e-9);
+        assert!((dynamic_viscosity(0.0).unwrap() - 1.716e-5).abs() < 1e-9);
+        assert!(dynamic_viscosity(35.0).unwrap() > dynamic_viscosity(0.0).unwrap());
+        for t in [-273.15, -300.0, f64::NAN, f64::INFINITY] {
+            assert!(dynamic_viscosity(t).is_none());
         }
     }
 }

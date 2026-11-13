@@ -207,16 +207,18 @@ impl BallModel {
     /// - SR = ω × R / V (spin ratio, dimensionless)
     #[must_use]
     pub fn cd_cl(&self, spin_rate: f64, speed: f64, air_density: f64) -> (f64, f64) {
-        /// Dynamic viscosity of air at ~18°C (Pa·s). Weakly temperature-dependent
-        /// (Sutherland's law); constant approximation is adequate for 0–40°C.
-        const AIR_DYNAMIC_VISCOSITY: f64 = 1.81e-5;
+        self.cd_cl_with_viscosity(spin_rate, speed, air_density, 1.81e-5)
+    }
 
+    /// Coefficients with supplied dynamic viscosity (Pa·s).
+    #[must_use]
+    pub fn cd_cl_with_viscosity(&self, spin_rate: f64, speed: f64, air_density: f64, dynamic_viscosity: f64) -> (f64, f64) {
         if speed < 1e-10 {
             return (self.cd_sub, 0.0);
         }
 
         // Reynolds number
-        let re = air_density * speed * self.diameter_m / AIR_DYNAMIC_VISCOSITY;
+        let re = air_density * speed * self.diameter_m / dynamic_viscosity;
 
         // Spin ratio
         let sr = (spin_rate * self.radius_m() / speed).abs();
@@ -243,13 +245,19 @@ impl BallModel {
     /// (right-handed). `vel` and the returned acceleration are in m/s and m/s².
     #[must_use]
     pub fn acceleration(&self, vel: DVec3, aero: &AeroParams, air_density: f64) -> DVec3 {
+        self.acceleration_with_viscosity(vel, aero, air_density, 1.81e-5)
+    }
+
+    /// Acceleration with supplied dynamic viscosity, including Reynolds-dependent forces.
+    #[must_use]
+    pub fn acceleration_with_viscosity(&self, vel: DVec3, aero: &AeroParams, air_density: f64, dynamic_viscosity: f64) -> DVec3 {
         let speed = vel.length();
         if speed < 1e-10 {
             return DVec3::new(0.0, -G, 0.0);
         }
 
         let vel_hat = vel / speed;
-        let (cd, cl) = self.cd_cl(aero.spin_rate, speed, air_density);
+        let (cd, cl) = self.cd_cl_with_viscosity(aero.spin_rate, speed, air_density, dynamic_viscosity);
 
         // Dynamic pressure: q = 0.5 × ρ × v²
         let q = 0.5 * air_density * speed * speed;

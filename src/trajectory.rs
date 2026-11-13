@@ -165,7 +165,7 @@ pub fn simulate_flight_with_wind(
     env: &Environment,
     wind: DVec3,
 ) -> FlightResult {
-    simulate_flight_with_atmosphere(input, ball, &Atmosphere { air_density: env.air_density() }, wind)
+    simulate_flight_with_atmosphere(input, ball, &Atmosphere::legacy(env.air_density()), wind)
 }
 
 /// Flight with a directly supplied atmosphere and a horizontal uniform wind.
@@ -236,7 +236,7 @@ fn fly<G: GroundModel + ?Sized>(
             },
             prev.time,
             DT,
-            |_pos, vel, _t| ball.acceleration(vel - wind, &aero, air_density),
+            |_pos, vel, _t| ball.acceleration_with_viscosity(vel - wind, &aero, air_density, atmosphere.dynamic_viscosity),
         );
         aero.decay_spin(DT);
         let next = BallState {
@@ -351,7 +351,7 @@ pub fn simulate_shot_with_wind<G: GroundModel + ?Sized>(
     ground: &G,
     wind: DVec3,
 ) -> ShotResult {
-    simulate_shot_with_atmosphere(input, ball, &Atmosphere { air_density: env.air_density() }, ground, wind)
+    simulate_shot_with_atmosphere(input, ball, &Atmosphere::legacy(env.air_density()), ground, wind)
 }
 
 /// Complete shot with a resolved atmosphere; flight and hops share its density.
@@ -361,7 +361,7 @@ pub fn simulate_shot_with_atmosphere<G: GroundModel + ?Sized>(
 ) -> ShotResult {
     let wind = horizontal(wind);
     let (flight, landing) = fly(input, ball, atmosphere, ground, wind);
-    let settled = ground.settle_with_wind(&landing, ball, atmosphere.air_density, wind);
+    let settled = ground.settle_with_atmosphere(&landing, ball, atmosphere, wind);
     let final_pos = settled.rest.pos;
     let total_m = final_pos.x.hypot(final_pos.z);
 

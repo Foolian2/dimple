@@ -3,6 +3,7 @@ use std::fmt;
 use glam::DVec3;
 
 use crate::aero::{AeroParams, BallModel};
+use crate::environment::Atmosphere;
 use crate::rk4::{self, Integrable};
 use crate::units::{self, G};
 
@@ -854,14 +855,15 @@ impl<T: Terrain> GroundPhysics<T> {
         t_end: f64,
         points: &mut Vec<GroundPoint>,
         ball: &BallModel,
-        air_density: f64,
+        atmosphere: &Atmosphere,
         wind: DVec3,
     ) -> Result<BallState, BallState> {
         // `acceleration` never reads `spin_decay`: the hop holds the spin fixed.
+        let air_density = atmosphere.air_density;
         let aero = AeroParams::from_spin_vector(start.spin);
         let accel = |vel: DVec3| {
             if air_density > 0.0 {
-                ball.acceleration(vel - wind, &aero, air_density)
+                ball.acceleration_with_viscosity(vel - wind, &aero, air_density, atmosphere.dynamic_viscosity)
             } else {
                 GRAVITY
             }
@@ -1149,6 +1151,13 @@ pub trait GroundModel {
     ) -> GroundResult {
         self.settle(landing, ball, air_density)
     }
+    /// Resolve atmosphere throughout airborne hops. Custom legacy ground models
+    /// retain their existing wind/density implementation by default.
+    #[must_use]
+    fn settle_with_atmosphere(&self, landing: &BallState, ball: &BallModel, atmosphere: &Atmosphere, wind: DVec3) -> GroundResult {
+        self.settle_with_wind(landing, ball, atmosphere.air_density, wind)
+    }
+
 }
 
 /// Flat ground with the default [`GroundPhysics`].
@@ -1170,6 +1179,10 @@ impl GroundModel for Surface {
     ) -> GroundResult {
         GroundPhysics::new(*self).settle_with_wind(landing, ball, air_density, wind)
     }
+    fn settle_with_atmosphere(&self, landing: &BallState, ball: &BallModel, atmosphere: &Atmosphere, wind: DVec3) -> GroundResult {
+        GroundPhysics::new(*self).settle_with_atmosphere(landing, ball, atmosphere, wind)
+    }
+
 }
 
 impl<T: Terrain> GroundModel for GroundPhysics<T> {
@@ -1188,6 +1201,10 @@ impl<T: Terrain> GroundModel for GroundPhysics<T> {
         air_density: f64,
         wind: DVec3,
     ) -> GroundResult {
+        self.settle_with_atmosphere(landing, ball, &Atmosphere::legacy(air_density), wind)
+    }
+
+    fn settle_with_atmosphere(&self, landing: &BallState, ball: &BallModel, atmosphere: &Atmosphere, wind: DVec3) -> GroundResult {
         let t_end = landing.time + self.max_time;
         let radius = ball.radius_m();
         let mut contacts = Vec::new();
@@ -1213,7 +1230,7 @@ impl<T: Terrain> GroundModel for GroundPhysics<T> {
                 }
                 let mark = points.len();
                 points.push(GroundPoint::new(&out, Phase::Hop));
-                flown = match self.hop(&out, t_end, &mut points, ball, air_density, wind) {
+                flown = match self.hop(&out, t_end, &mut points, ball, atmosphere, wind) {
                     Ok(arrival)
                         if !hops_die_out(&state, &out, &arrival, n, ball, self.min_hop_height) =>
                     {
