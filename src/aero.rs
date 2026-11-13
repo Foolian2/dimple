@@ -212,7 +212,13 @@ impl BallModel {
 
     /// Coefficients with supplied dynamic viscosity (Pa·s).
     #[must_use]
-    pub fn cd_cl_with_viscosity(&self, spin_rate: f64, speed: f64, air_density: f64, dynamic_viscosity: f64) -> (f64, f64) {
+    pub fn cd_cl_with_viscosity(
+        &self,
+        spin_rate: f64,
+        speed: f64,
+        air_density: f64,
+        dynamic_viscosity: f64,
+    ) -> (f64, f64) {
         if speed < 1e-10 {
             return (self.cd_sub, 0.0);
         }
@@ -250,14 +256,21 @@ impl BallModel {
 
     /// Acceleration with supplied dynamic viscosity, including Reynolds-dependent forces.
     #[must_use]
-    pub fn acceleration_with_viscosity(&self, vel: DVec3, aero: &AeroParams, air_density: f64, dynamic_viscosity: f64) -> DVec3 {
+    pub fn acceleration_with_viscosity(
+        &self,
+        vel: DVec3,
+        aero: &AeroParams,
+        air_density: f64,
+        dynamic_viscosity: f64,
+    ) -> DVec3 {
         let speed = vel.length();
         if speed < 1e-10 {
             return DVec3::new(0.0, -G, 0.0);
         }
 
         let vel_hat = vel / speed;
-        let (cd, cl) = self.cd_cl_with_viscosity(aero.spin_rate, speed, air_density, dynamic_viscosity);
+        let (cd, cl) =
+            self.cd_cl_with_viscosity(aero.spin_rate, speed, air_density, dynamic_viscosity);
 
         // Dynamic pressure: q = 0.5 × ρ × v²
         let q = 0.5 * air_density * speed * speed;

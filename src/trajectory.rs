@@ -1,7 +1,7 @@
 use glam::DVec3;
 
 use crate::aero::{AeroParams, BallModel};
-use crate::environment::{Atmosphere, Environment};
+use crate::environment::{Atmosphere, Environment, WindProfile};
 use crate::ground::{BallState, GroundModel, GroundResult, Surface};
 use crate::rk4::{self, State};
 use crate::units;
@@ -165,15 +165,30 @@ pub fn simulate_flight_with_wind(
     env: &Environment,
     wind: DVec3,
 ) -> FlightResult {
-    simulate_flight_with_atmosphere(input, ball, &Atmosphere::legacy(env.air_density()), wind)
+    simulate_flight_with_atmosphere(
+        input,
+        ball,
+        &Atmosphere::legacy(env.air_density()),
+        WindProfile::Uniform(horizontal(wind)),
+    )
 }
 
-/// Flight with a directly supplied atmosphere and a horizontal uniform wind.
+/// Flight with a directly supplied atmosphere and horizontal wind profile.
 #[must_use]
 pub fn simulate_flight_with_atmosphere(
-    input: &ShotInput, ball: &BallModel, atmosphere: &Atmosphere, wind: DVec3,
+    input: &ShotInput,
+    ball: &BallModel,
+    atmosphere: &Atmosphere,
+    wind: WindProfile,
 ) -> FlightResult {
-    fly(input, ball, atmosphere, &Surface::FAIRWAY, horizontal(wind)).0
+    fly(
+        input,
+        ball,
+        atmosphere,
+        &Surface::FAIRWAY,
+        wind.with_ground_height(0.0),
+    )
+    .0
 }
 
 /// The horizontal part of `wind`: the wind model is two-dimensional, since a
@@ -206,7 +221,7 @@ fn fly<G: GroundModel + ?Sized>(
     ball: &BallModel,
     atmosphere: &Atmosphere,
     ground: &G,
-    wind: DVec3,
+    wind: WindProfile,
 ) -> (FlightResult, BallState) {
     const DT: f64 = 0.001; // 1 ms timestep
     const SAMPLE_EVERY: u32 = 10; // record every 10 ms
@@ -236,7 +251,14 @@ fn fly<G: GroundModel + ?Sized>(
             },
             prev.time,
             DT,
-            |_pos, vel, _t| ball.acceleration_with_viscosity(vel - wind, &aero, air_density, atmosphere.dynamic_viscosity),
+            |pos, vel, _t| {
+                ball.acceleration_with_viscosity(
+                    vel - wind.at_height(pos.y),
+                    &aero,
+                    air_density,
+                    atmosphere.dynamic_viscosity,
+                )
+            },
         );
         aero.decay_spin(DT);
         let next = BallState {
@@ -351,15 +373,25 @@ pub fn simulate_shot_with_wind<G: GroundModel + ?Sized>(
     ground: &G,
     wind: DVec3,
 ) -> ShotResult {
-    simulate_shot_with_atmosphere(input, ball, &Atmosphere::legacy(env.air_density()), ground, wind)
+    simulate_shot_with_atmosphere(
+        input,
+        ball,
+        &Atmosphere::legacy(env.air_density()),
+        ground,
+        WindProfile::Uniform(horizontal(wind)),
+    )
 }
 
 /// Complete shot with a resolved atmosphere; flight and hops share its density.
 #[must_use]
 pub fn simulate_shot_with_atmosphere<G: GroundModel + ?Sized>(
-    input: &ShotInput, ball: &BallModel, atmosphere: &Atmosphere, ground: &G, wind: DVec3,
+    input: &ShotInput,
+    ball: &BallModel,
+    atmosphere: &Atmosphere,
+    ground: &G,
+    wind: WindProfile,
 ) -> ShotResult {
-    let wind = horizontal(wind);
+    let wind = wind.with_ground_height(ground.height(0.0, 0.0));
     let (flight, landing) = fly(input, ball, atmosphere, ground, wind);
     let settled = ground.settle_with_atmosphere(&landing, ball, atmosphere, wind);
     let final_pos = settled.rest.pos;

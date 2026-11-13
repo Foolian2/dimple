@@ -133,7 +133,10 @@ impl Atmosphere {
     /// Legacy constant viscosity, including zero-density ballistic ground hops.
     #[must_use]
     pub const fn legacy(air_density: f64) -> Self {
-        Self { air_density, dynamic_viscosity: 1.81e-5 }
+        Self {
+            air_density,
+            dynamic_viscosity: 1.81e-5,
+        }
     }
 
     /// Supplied density and dry-air viscosity at ambient temperature.
@@ -172,7 +175,9 @@ mod atmosphere_tests {
 #[must_use]
 pub fn dynamic_viscosity(temperature_c: f64) -> Option<f64> {
     let t = temperature_c + 273.15;
-    if !t.is_finite() || t <= 0.0 { return None; }
+    if !t.is_finite() || t <= 0.0 {
+        return None;
+    }
     let mu = 1.458e-6 * t.powf(1.5) / (t + 110.4);
     (mu.is_finite() && mu > 0.0).then_some(mu)
 }
@@ -188,5 +193,82 @@ mod viscosity_tests {
         for t in [-273.15, -300.0, f64::NAN, f64::INFINITY] {
             assert!(dynamic_viscosity(t).is_none());
         }
+    }
+}
+
+/// Horizontal wind sampled at each RK4 stage, including airborne ground hops.
+#[derive(Debug, Clone, Copy)]
+pub enum WindProfile {
+    /// Legacy uniform wind. Its vertical component is ignored.
+    Uniform(glam::DVec3),
+    /// Garmin's decoded 10 m power-law profile; this is a modeling assumption,
+    /// not a measured wind field. Heights are relative to `ground_height_m`.
+    GarminPowerLaw {
+        wind10: glam::DVec3,
+        ground_height_m: f64,
+    },
+}
+impl WindProfile {
+    /// Velocity at an absolute simulation height (m).
+    #[must_use]
+    pub fn at_height(self, height_m: f64) -> glam::DVec3 {
+        let (wind, factor) = match self {
+            Self::Uniform(wind) => (wind, 1.0),
+            Self::GarminPowerLaw {
+                wind10,
+                ground_height_m,
+            } => {
+                let speed = wind10.x.hypot(wind10.z);
+                let factor = if speed > 0.1 {
+                    ((height_m - ground_height_m).max(0.0) / 10.0).powf(0.37 - 0.0881 * speed.ln())
+                } else {
+                    1.0
+                };
+                (wind10, factor)
+            }
+        };
+        glam::DVec3::new(wind.x * factor, 0.0, wind.z * factor)
+    }
+
+    /// Anchor the profile to the tee's ground height.
+    #[must_use]
+    pub fn with_ground_height(self, height_m: f64) -> Self {
+        match self {
+            Self::Uniform(_) => self,
+            Self::GarminPowerLaw { wind10, .. } => Self::GarminPowerLaw {
+                wind10,
+                ground_height_m: height_m,
+            },
+        }
+    }
+}
+
+#[cfg(test)]
+mod wind_tests {
+    use super::*;
+    use glam::DVec3;
+    #[test]
+    fn decoded_profile_and_threshold() {
+        let w = WindProfile::GarminPowerLaw {
+            wind10: DVec3::new(3.0, 99.0, 4.0),
+            ground_height_m: 7.0,
+        };
+        assert_eq!(w.at_height(17.0), DVec3::new(3.0, 0.0, 4.0));
+        assert_eq!(w.at_height(7.0), DVec3::ZERO);
+        assert_eq!(w.at_height(-1.0), DVec3::ZERO);
+        let expected = 0.2_f64.powf(0.37 - 0.0881 * 5.0_f64.ln());
+        assert!((w.at_height(9.0).x - 3.0 * expected).abs() < 1e-12);
+        for speed in [0.0, 0.01, 0.1] {
+            let weak = WindProfile::GarminPowerLaw {
+                wind10: DVec3::new(speed, 9.0, 0.0),
+                ground_height_m: 0.0,
+            };
+            assert_eq!(weak.at_height(0.0), DVec3::new(speed, 0.0, 0.0));
+        }
+        let above = WindProfile::GarminPowerLaw {
+            wind10: DVec3::new(0.100001, 0.0, 0.0),
+            ground_height_m: 0.0,
+        };
+        assert_eq!(above.at_height(0.0), DVec3::ZERO);
     }
 }
