@@ -1,7 +1,7 @@
 use glam::DVec3;
 
 use crate::aero::{AeroParams, BallModel};
-use crate::environment::Environment;
+use crate::environment::{Atmosphere, Environment};
 use crate::ground::{BallState, GroundModel, GroundResult, Surface};
 use crate::rk4::{self, State};
 use crate::units;
@@ -165,7 +165,15 @@ pub fn simulate_flight_with_wind(
     env: &Environment,
     wind: DVec3,
 ) -> FlightResult {
-    fly(input, ball, env, &Surface::FAIRWAY, horizontal(wind)).0
+    simulate_flight_with_atmosphere(input, ball, &Atmosphere { air_density: env.air_density() }, wind)
+}
+
+/// Flight with a directly supplied atmosphere and a horizontal uniform wind.
+#[must_use]
+pub fn simulate_flight_with_atmosphere(
+    input: &ShotInput, ball: &BallModel, atmosphere: &Atmosphere, wind: DVec3,
+) -> FlightResult {
+    fly(input, ball, atmosphere, &Surface::FAIRWAY, horizontal(wind)).0
 }
 
 /// The horizontal part of `wind`: the wind model is two-dimensional, since a
@@ -196,7 +204,7 @@ fn launch_velocity(input: &ShotInput) -> DVec3 {
 fn fly<G: GroundModel + ?Sized>(
     input: &ShotInput,
     ball: &BallModel,
-    env: &Environment,
+    atmosphere: &Atmosphere,
     ground: &G,
     wind: DVec3,
 ) -> (FlightResult, BallState) {
@@ -206,7 +214,7 @@ fn fly<G: GroundModel + ?Sized>(
 
     let spin = input.launch_spin_rads();
     let mut aero = AeroParams::from_spin_vector(spin);
-    let air_density = env.air_density();
+    let air_density = atmosphere.air_density;
 
     let tee = DVec3::new(0.0, ground.height(0.0, 0.0), 0.0);
     let mut prev = BallState {
@@ -343,9 +351,17 @@ pub fn simulate_shot_with_wind<G: GroundModel + ?Sized>(
     ground: &G,
     wind: DVec3,
 ) -> ShotResult {
+    simulate_shot_with_atmosphere(input, ball, &Atmosphere { air_density: env.air_density() }, ground, wind)
+}
+
+/// Complete shot with a resolved atmosphere; flight and hops share its density.
+#[must_use]
+pub fn simulate_shot_with_atmosphere<G: GroundModel + ?Sized>(
+    input: &ShotInput, ball: &BallModel, atmosphere: &Atmosphere, ground: &G, wind: DVec3,
+) -> ShotResult {
     let wind = horizontal(wind);
-    let (flight, landing) = fly(input, ball, env, ground, wind);
-    let settled = ground.settle_with_wind(&landing, ball, env.air_density(), wind);
+    let (flight, landing) = fly(input, ball, atmosphere, ground, wind);
+    let settled = ground.settle_with_wind(&landing, ball, atmosphere.air_density, wind);
     let final_pos = settled.rest.pos;
     let total_m = final_pos.x.hypot(final_pos.z);
 

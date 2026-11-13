@@ -119,3 +119,32 @@ mod tests {
         );
     }
 }
+
+/// Resolved atmospheric inputs, independent of altitude and pressure inference.
+#[derive(Debug, Clone, Copy)]
+pub struct Atmosphere {
+    /// Air density in kg/m³. Use `from_density` to validate measured inputs.
+    pub air_density: f64,
+}
+
+impl Atmosphere {
+    /// Resolve an externally supplied density; no altitude clamp is applied.
+    #[must_use]
+    pub fn from_density(air_density: f64) -> Option<Self> {
+        (air_density.is_finite() && air_density > 0.0).then_some(Self { air_density })
+    }
+}
+
+#[cfg(test)]
+mod atmosphere_tests {
+    use super::*;
+    #[test]
+    fn density_is_not_an_altitude() {
+        for rho in [0.8, 1.225, 1.5] {
+            assert_eq!(Atmosphere::from_density(rho).unwrap().air_density, rho);
+        }
+        for rho in [0.0, -1.0, f64::NAN, f64::INFINITY] {
+            assert!(Atmosphere::from_density(rho).is_none());
+        }
+    }
+}
