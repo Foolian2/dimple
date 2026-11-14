@@ -74,3 +74,50 @@ fn bounce_hops_sample_the_same_profile() {
     assert!(profile.contacts.len() > 1);
     assert!((uniform.rest.pos.z - profile.rest.pos.z).abs() > 0.001);
 }
+
+/// Wind on the bounce hops must not keep the ball bouncing. A fast landing
+/// in a strong wind used to settle into a train of hops that the wind fed
+/// back as fast as the impacts drained it, so the ball hopped on to the
+/// impact limit, hundreds of metres past the landing. (A wind this strong at
+/// the turf may still blow the ball a long way along the ground.)
+#[test]
+fn strong_wind_does_not_keep_the_ball_bouncing() {
+    use dimple::ground::Termination;
+    let atmosphere = Atmosphere::from_density_and_temperature(1.2, 20.0).unwrap();
+    for (speed_mph, launch_deg, spin, wind) in [
+        (67.1, 8.0, 1500.0, DVec3::new(20.0, 0.0, 0.0)),
+        (67.1, 8.0, 1500.0, DVec3::new(14.0, 0.0, 14.0)),
+        (100.7, 18.0, 10000.0, DVec3::new(-20.0, 0.0, 0.0)),
+        (157.0, 12.0, 2500.0, DVec3::new(20.0, 0.0, 0.0)),
+    ] {
+        let shot = ShotInput {
+            ball_speed_mph: speed_mph,
+            launch_angle_deg: launch_deg,
+            launch_azimuth_deg: 0.0,
+            backspin_rpm: spin,
+            sidespin_rpm: 0.0,
+        };
+        for profile in [
+            WindProfile::Uniform(wind),
+            WindProfile::GarminPowerLaw {
+                wind10: wind,
+                ground_height_m: 0.0,
+            },
+        ] {
+            let r = simulate_shot_with_atmosphere(
+                &shot,
+                &BallModel::TOUR,
+                &atmosphere,
+                &Surface::FAIRWAY,
+                profile,
+            );
+            let hops = r.ground.contacts.len();
+            assert_eq!(
+                r.ground.termination,
+                Termination::Rest,
+                "{profile:?} {shot:?}"
+            );
+            assert!(hops < 60, "{profile:?} {shot:?}: {hops} impacts");
+        }
+    }
+}
