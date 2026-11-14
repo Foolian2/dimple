@@ -140,9 +140,39 @@ pub struct FlightResult {
 /// Uses RK4 integration with a fixed 1 ms timestep. Records a trajectory
 /// point every 10 ms, plus the landing point, which is interpolated to the
 /// exact ground crossing. Spin decays exponentially over the flight.
+///
+/// Still air. For wind see [`simulate_flight_with_wind`].
 #[must_use]
 pub fn simulate_flight(input: &ShotInput, ball: &BallModel, env: &Environment) -> FlightResult {
-    fly(input, ball, env, &Surface::FAIRWAY).0
+    simulate_flight_with_wind(input, ball, env, DVec3::ZERO)
+}
+
+/// [`simulate_flight`] through air moving at `wind` (m/s).
+///
+/// `wind` is a horizontal velocity in the public frame: `+x` blows downrange
+/// (a tailwind), `+z` blows to the right. Drag and Magnus lift act on the
+/// ball's velocity relative to the air, `v − wind`, so a headwind makes the
+/// ball fly as if the air were faster and a crosswind curves it downwind.
+/// The vertical component is ignored.
+///
+/// A uniform wind is not a frame shift of the still-air trajectory: the
+/// relative airspeed at launch changes, and with it the drag and the spin
+/// ratio, so the shot must be re-integrated (which this does).
+#[must_use]
+pub fn simulate_flight_with_wind(
+    input: &ShotInput,
+    ball: &BallModel,
+    env: &Environment,
+    wind: DVec3,
+) -> FlightResult {
+    fly(input, ball, env, &Surface::FAIRWAY, horizontal(wind)).0
+}
+
+/// The horizontal part of `wind`: the wind model is two-dimensional, since a
+/// vertical wind component is not a wind a launch monitor reports and the
+/// ball's own vertical motion dominates.
+fn horizontal(wind: DVec3) -> DVec3 {
+    DVec3::new(wind.x, 0.0, wind.z)
 }
 
 /// Launch velocity (m/s): ball speed along the launch direction.
@@ -160,11 +190,15 @@ fn launch_velocity(input: &ShotInput) -> DVec3 {
 /// Flight from the tee at `(0, ground.height(0, 0), 0)` until
 /// `ground.landing` reports a crossing (or 30 s). Returns the flight and the
 /// full landing state.
+///
+/// `wind` is the air's horizontal velocity (m/s) in the public frame; the
+/// aerodynamic forces act on the ball's velocity relative to it.
 fn fly<G: GroundModel + ?Sized>(
     input: &ShotInput,
     ball: &BallModel,
     env: &Environment,
     ground: &G,
+    wind: DVec3,
 ) -> (FlightResult, BallState) {
     const DT: f64 = 0.001; // 1 ms timestep
     const SAMPLE_EVERY: u32 = 10; // record every 10 ms
@@ -194,7 +228,7 @@ fn fly<G: GroundModel + ?Sized>(
             },
             prev.time,
             DT,
-            |_pos, vel, _t| ball.acceleration(vel, &aero, air_density),
+            |_pos, vel, _t| ball.acceleration(vel - wind, &aero, air_density),
         );
         aero.decay_spin(DT);
         let next = BallState {
@@ -290,8 +324,28 @@ pub fn simulate_shot<G: GroundModel + ?Sized>(
     env: &Environment,
     ground: &G,
 ) -> ShotResult {
-    let (flight, landing) = fly(input, ball, env, ground);
-    let settled = ground.settle(&landing, ball, env.air_density());
+    simulate_shot_with_wind(input, ball, env, ground, DVec3::ZERO)
+}
+
+/// [`simulate_shot`] through air moving at `wind` (m/s), flight and hops
+/// alike.
+///
+/// `wind` is a horizontal velocity in the public frame: `+x` blows downrange
+/// (a tailwind), `+z` blows to the right. See
+/// [`simulate_flight_with_wind`] for the flight model. The hops between
+/// impacts fly through the same moving air; the ground contacts themselves
+/// are unchanged, because the turf does not move.
+#[must_use]
+pub fn simulate_shot_with_wind<G: GroundModel + ?Sized>(
+    input: &ShotInput,
+    ball: &BallModel,
+    env: &Environment,
+    ground: &G,
+    wind: DVec3,
+) -> ShotResult {
+    let wind = horizontal(wind);
+    let (flight, landing) = fly(input, ball, env, ground, wind);
+    let settled = ground.settle_with_wind(&landing, ball, env.air_density(), wind);
     let final_pos = settled.rest.pos;
     let total_m = final_pos.x.hypot(final_pos.z);
 
@@ -1532,5 +1586,152 @@ mod tests {
                 rot(base.final_pos)
             );
         }
+    }
+
+    // ── Wind ──
+
+    fn driver() -> ShotInput {
+        ShotInput {
+            ball_speed_mph: 150.0,
+            launch_angle_deg: 13.0,
+            launch_azimuth_deg: 0.0,
+            backspin_rpm: 2700.0,
+            sidespin_rpm: 0.0,
+        }
+    }
+
+    #[test]
+    fn ground_model_without_wind_support_settles_in_still_air() {
+        // Implements only `settle`, as every ground model written before
+        // wind existed does: the default `settle_with_wind` must hand it the
+        // landing unchanged and ignore the wind on the hops.
+        struct StillAirFairway;
+        impl GroundModel for StillAirFairway {
+            fn height(&self, x: f64, z: f64) -> f64 {
+                Surface::FAIRWAY.height(x, z)
+            }
+            fn settle(
+                &self,
+                landing: &BallState,
+                ball: &BallModel,
+                air_density: f64,
+            ) -> GroundResult {
+                Surface::FAIRWAY.settle(landing, ball, air_density)
+            }
+        }
+
+        let input = driver();
+        let env = Environment::SEA_LEVEL;
+        let wind = DVec3::new(-5.0, 0.0, 3.0);
+        let custom = simulate_shot_with_wind(&input, &BALL, &env, &StillAirFairway, wind);
+        let windy = simulate_shot_with_wind(&input, &BALL, &env, &Surface::FAIRWAY, wind);
+
+        // The flight is dimple's own, so the wind acts on it either way.
+        assert_eq!(custom.flight.carry_m, windy.flight.carry_m);
+        assert_eq!(custom.flight.lateral_m, windy.flight.lateral_m);
+
+        // The hops do not: the custom model settles as in still air.
+        let p = custom.flight.points.last().unwrap();
+        let landing = BallState {
+            time: p.time,
+            pos: p.pos,
+            vel: p.vel,
+            spin: custom.flight.landing_spin,
+        };
+        let still = Surface::FAIRWAY.settle(&landing, &BALL, env.air_density());
+        assert_eq!(custom.final_pos, still.rest.pos);
+        assert_ne!(custom.final_pos, windy.final_pos);
+    }
+
+    #[test]
+    fn headwind_shortens_carry_and_tailwind_lengthens_it() {
+        let input = driver();
+        let still = simulate_flight(&input, &BALL, &Environment::SEA_LEVEL).carry_m;
+        // +x is downrange, so a tailwind blows along +x and a headwind along −x.
+        let head = simulate_flight_with_wind(
+            &input,
+            &BALL,
+            &Environment::SEA_LEVEL,
+            DVec3::new(-5.0, 0.0, 0.0),
+        )
+        .carry_m;
+        let tail = simulate_flight_with_wind(
+            &input,
+            &BALL,
+            &Environment::SEA_LEVEL,
+            DVec3::new(5.0, 0.0, 0.0),
+        )
+        .carry_m;
+        assert!(
+            head < still,
+            "headwind {head} should fall short of still {still}"
+        );
+        assert!(tail > still, "tailwind {tail} should pass still {still}");
+        // Moving air is not symmetric: the headwind costs more than the same
+        // tailwind gains, because drag grows with the square of the airspeed.
+        assert!(
+            still - head > tail - still,
+            "head {head} tail {tail} still {still}"
+        );
+    }
+
+    #[test]
+    fn crosswind_drifts_the_ball_downwind() {
+        let input = driver();
+        for (wind, sign) in [
+            (DVec3::new(0.0, 0.0, 5.0), 1.0),
+            (DVec3::new(0.0, 0.0, -5.0), -1.0),
+        ] {
+            let f = simulate_flight_with_wind(&input, &BALL, &Environment::SEA_LEVEL, wind);
+            assert!(
+                f.lateral_m * sign > 1.0,
+                "wind {wind:?} should drift the ball with it, lateral {}",
+                f.lateral_m
+            );
+        }
+    }
+
+    #[test]
+    fn vertical_wind_is_ignored() {
+        let input = driver();
+        let flat = simulate_flight_with_wind(
+            &input,
+            &BALL,
+            &Environment::SEA_LEVEL,
+            DVec3::new(3.0, 0.0, 0.0),
+        );
+        let up = simulate_flight_with_wind(
+            &input,
+            &BALL,
+            &Environment::SEA_LEVEL,
+            DVec3::new(3.0, 9.0, 0.0),
+        );
+        assert_eq!(flat.carry_m, up.carry_m);
+        assert_eq!(flat.apex_m, up.apex_m);
+    }
+
+    #[test]
+    fn wind_carries_through_the_ground_phase() {
+        let input = driver();
+        let still =
+            simulate_shot(&input, &BALL, &Environment::SEA_LEVEL, &Surface::FAIRWAY).total_m;
+        let head = simulate_shot_with_wind(
+            &input,
+            &BALL,
+            &Environment::SEA_LEVEL,
+            &Surface::FAIRWAY,
+            DVec3::new(-5.0, 0.0, 0.0),
+        )
+        .total_m;
+        let tail = simulate_shot_with_wind(
+            &input,
+            &BALL,
+            &Environment::SEA_LEVEL,
+            &Surface::FAIRWAY,
+            DVec3::new(5.0, 0.0, 0.0),
+        )
+        .total_m;
+        assert!(head < still, "head {head} still {still}");
+        assert!(tail > still, "tail {tail} still {still}");
     }
 }
