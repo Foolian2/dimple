@@ -554,7 +554,7 @@ too weak to prevent it. Under the 5 mm rule alone, a drive landing on a 5°
 downhill `FAIRWAY` is still hopping after 200 impacts (with ballistic hops,
 already on 3.75°).
 
-So on a slope the ball keeps hopping only while the train dies out. Each
+So on a slope, or in wind, the ball keeps hopping only while the train dies out. Each
 hop is flown first and then judged. With `E = |v|²/2 + k·R²·|ω|²/2` per
 unit mass, the energy the impact removed `ΔE = E_in − E_out` and the
 energy the hop, flown through whatever air there is, handed back
@@ -567,9 +567,20 @@ what drag took; the spin is held over the hop), it keeps hopping if
 
 Each impact must take at least the energy of a 5 mm hop more than the next
 hop gives back. Otherwise the hop is discarded and the ball goes to the
-ground at the impact, exactly as below the 5 mm height. On level ground the
-5 mm height alone decides, so level-ground results do not depend on this
-rule, and a hop that climbs returns nothing.
+ground at the impact, exactly as below the 5 mm height. On level ground in
+still air the 5 mm height alone decides, so those results do not depend on
+this rule, and a hop that climbs returns nothing.
+
+Wind is the other source. Hops are flown through the wind, and a ball
+moving slower than the air is pushed along by it, so on level ground too a
+hop can hand back energy (`ΔU` then also holds the wind's work). Without
+the rule a fast landing in a strong wind settles into a train of hops that
+the wind refills as fast as the Penner impacts drain them (the tilted
+contact plane turns the regained speed back into bounce), and the ball hops
+on to the impact limit: hundreds of metres past the landing, with hops
+metres high. Judged the same way as on a slope, such a train goes to the
+ground once the impacts stop draining it; a wind strong enough at the turf
+may still blow the ball some way along it.
 
 This stays within Penner's transition. He notes that "the transition
 between bouncing and rolling will, of course, take place over several

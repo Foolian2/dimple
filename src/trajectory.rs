@@ -1734,4 +1734,42 @@ mod tests {
         assert!(head < still, "head {head} still {still}");
         assert!(tail > still, "tail {tail} still {still}");
     }
+
+    /// Wind on the bounce hops must not keep the ball bouncing. A fast
+    /// landing in a strong wind used to settle into a train of hops that the
+    /// wind fed back as fast as the impacts drained it, so the ball hopped on
+    /// to the impact limit, hundreds of metres past the landing. (A wind this
+    /// strong at the turf may still blow the ball a long way along the
+    /// ground.)
+    #[test]
+    fn strong_wind_does_not_keep_the_ball_bouncing() {
+        for (speed_mph, launch_deg, spin, wind) in [
+            (67.1, 8.0, 1500.0, DVec3::new(20.0, 0.0, 0.0)),
+            (67.1, 8.0, 1500.0, DVec3::new(14.0, 0.0, 14.0)),
+            (100.7, 18.0, 10000.0, DVec3::new(-20.0, 0.0, 0.0)),
+            (157.0, 12.0, 2500.0, DVec3::new(20.0, 0.0, 0.0)),
+        ] {
+            let input = ShotInput {
+                ball_speed_mph: speed_mph,
+                launch_angle_deg: launch_deg,
+                launch_azimuth_deg: 0.0,
+                backspin_rpm: spin,
+                sidespin_rpm: 0.0,
+            };
+            let r = simulate_shot_with_wind(
+                &input,
+                &BALL,
+                &Environment::SEA_LEVEL,
+                &Surface::FAIRWAY,
+                wind,
+            );
+            let hops = r.ground.contacts.len();
+            assert_eq!(
+                r.ground.termination,
+                Termination::Rest,
+                "{wind:?} {input:?}"
+            );
+            assert!(hops < 60, "{wind:?} {input:?}: {hops} impacts");
+        }
+    }
 }
